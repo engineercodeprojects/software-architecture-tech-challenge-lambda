@@ -252,7 +252,7 @@ local fiel ao runtime e permite migrar para deploy por imagem quando quiser.
 | Workflow                                   | Disparo                                                    | Faz                                                                                                            |
 | ------------------------------------------ | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
 | [`ci.yml`](.github/workflows/ci.yml)       | PR e push em `main`/`homolog`                              | prettier, eslint, tsc, jest + cobertura, `lambda.zip`, `docker build`, `npm audit`, `terraform fmt/validate`   |
-| [`infra.yml`](.github/workflows/infra.yml) | PR/push em `infra/**` e manual                             | `terraform plan` (PR) / `apply` (push) / `destroy` (manual)                                                    |
+| [`infra.yml`](.github/workflows/infra.yml) | push em `infra/**` e manual                                | `terraform apply` (push) / `plan`/`apply`/`destroy` (manual)                                                   |
 | [`cd.yml`](.github/workflows/cd.yml)       | push em `homolog` → homologação; push em `main` → produção | testes, `lambda.zip`, `update-function-code`, `publish-version`, move o **alias**, **smoke test** (espera 422) |
 
 O CD publica uma versão nova e move o alias do ambiente — rollback é apontar o

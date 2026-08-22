@@ -1,15 +1,13 @@
 name: Infra - Terraform
 
 # Cria/atualiza a infraestrutura da Lambda (function, role, secrets, VPC, alias).
-# - PR que toca infra/**: plan (somente leitura)
 # - push em main/homolog tocando infra/**: apply no ambiente correspondente
 # - workflow_dispatch: plan/apply/destroy sob demanda
 #
 # Rode este workflow uma vez antes do primeiro deploy de codigo (cd.yml).
+# Em PR o Terraform e conferido pelo job `fmt/validate` do CI (sem AWS).
 
 on:
-  pull_request:
-    paths: ['infra/**', '.github/workflows/infra.yml']
   push:
     branches: [main, homolog]
     paths: ['infra/**', '.github/workflows/infra.yml']
@@ -49,18 +47,31 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Ha credenciais AWS configuradas?
+        id: guard
+        run: |
+          if [ -n "${{ secrets.AWS_TERRAFORM_ROLE_ARN }}${{ secrets.AWS_ROLE_ARN }}" ] || [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo "::notice::Ambiente AWS ainda nao configurado. Terraform ignorado — veja README secao 6.2."
+          fi
+
       - uses: actions/setup-node@v4
+        if: steps.guard.outputs.configured == 'true'
         with:
           node-version: '20'
           cache: npm
 
       - name: Gerar lambda.zip (o Terraform precisa do artefato inicial)
+        if: steps.guard.outputs.configured == 'true'
         working-directory: .
         run: |
           npm ci
           npm run package
 
       - name: Credenciais AWS
+        if: steps.guard.outputs.configured == 'true'
         uses: ./.github/actions/aws-credentials
         with:
           aws-region: ${{ env.AWS_REGION }}
@@ -70,10 +81,12 @@ jobs:
           session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
       - uses: hashicorp/setup-terraform@v3
+        if: steps.guard.outputs.configured == 'true'
         with:
           terraform_version: 1.9.8
 
       - name: terraform init (state remoto em S3)
+        if: steps.guard.outputs.configured == 'true'
         run: |
           if [ -z "${{ secrets.TF_STATE_BUCKET }}" ]; then
             echo "::error::Crie um bucket S3 para o state e configure o secret TF_STATE_BUCKET."
@@ -86,6 +99,7 @@ jobs:
             -backend-config="encrypt=true"
 
       - name: Montar variaveis
+        if: steps.guard.outputs.configured == 'true'
         run: |
           {
             echo "environment = \"${TF_ENV}\""
@@ -116,18 +130,19 @@ jobs:
           cat ci.auto.tfvars
 
       - name: terraform plan
+        if: steps.guard.outputs.configured == 'true'
         run: terraform plan -input=false -lock-timeout=5m -out=tfplan
 
       - name: terraform apply
-        if: env.TF_ACTION == 'apply'
+        if: steps.guard.outputs.configured == 'true' && env.TF_ACTION == 'apply'
         run: terraform apply -input=false -auto-approve tfplan
 
       - name: terraform destroy
-        if: env.TF_ACTION == 'destroy'
+        if: steps.guard.outputs.configured == 'true' && env.TF_ACTION == 'destroy'
         run: terraform destroy -input=false -auto-approve
 
       - name: Outputs
-        if: env.TF_ACTION == 'apply'
+        if: steps.guard.outputs.configured == 'true' && env.TF_ACTION == 'apply'
         run: |
           {
             echo "### Terraform apply (${TF_ENV})"

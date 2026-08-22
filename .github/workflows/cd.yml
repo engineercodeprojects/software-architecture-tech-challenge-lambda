@@ -38,6 +38,16 @@ jobs:
           node-version: '20'
           cache: npm
 
+      - name: Ha credenciais AWS configuradas?
+        id: guard
+        run: |
+          if [ -n "${{ secrets.AWS_ROLE_ARN }}" ] || [ -n "${{ secrets.AWS_ACCESS_KEY_ID }}" ]; then
+            echo 'configured=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'configured=false' >> "$GITHUB_OUTPUT"
+            echo "::notice::Ambiente AWS ainda nao configurado (sem AWS_ROLE_ARN/AWS_ACCESS_KEY_ID). Deploy ignorado — veja README secao 6.2."
+          fi
+
       - run: npm ci
 
       - name: Testes (barreira antes do deploy)
@@ -47,6 +57,7 @@ jobs:
         run: npm run package
 
       - name: Credenciais AWS
+        if: steps.guard.outputs.configured == 'true'
         uses: ./.github/actions/aws-credentials
         with:
           aws-region: ${{ env.AWS_REGION }}
@@ -56,6 +67,7 @@ jobs:
           session-token: ${{ secrets.AWS_SESSION_TOKEN }}
 
       - name: Conferir a function
+        if: steps.guard.outputs.configured == 'true'
         run: |
           if [ -z "$FUNCTION_NAME" ]; then
             echo "::error::Defina a variavel de ambiente LAMBDA_FUNCTION_NAME no GitHub Environment (Settings > Environments)."
@@ -68,6 +80,7 @@ jobs:
 
       - name: Publicar nova versao do codigo
         id: publish
+        if: steps.guard.outputs.configured == 'true'
         run: |
           aws lambda update-function-code \
             --function-name "$FUNCTION_NAME" \
@@ -83,6 +96,7 @@ jobs:
           echo "Versao publicada: $VERSION"
 
       - name: Apontar o alias ${{ env.ALIAS }} para a nova versao
+        if: steps.guard.outputs.configured == 'true'
         run: |
           VERSION="${{ steps.publish.outputs.version }}"
           if aws lambda get-alias --function-name "$FUNCTION_NAME" --name "$ALIAS" >/dev/null 2>&1; then
@@ -94,6 +108,7 @@ jobs:
           fi
 
       - name: Smoke test (CPF invalido deve responder 422)
+        if: steps.guard.outputs.configured == 'true'
         run: |
           aws lambda invoke \
             --function-name "$FUNCTION_NAME:$ALIAS" \
@@ -108,6 +123,7 @@ jobs:
           fi
 
       - name: Resumo do deploy
+        if: steps.guard.outputs.configured == 'true'
         run: |
           {
             echo "### Deploy concluido"
