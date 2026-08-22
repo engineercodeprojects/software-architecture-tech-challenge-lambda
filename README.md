@@ -209,9 +209,11 @@ docker compose down -v
 ### 4.3 Sem Docker (Node direto)
 
 ```bash
-cp .env.example .env    # ajuste DATABASE_URL/JWT_SECRET
+cp .env.example .env    # ajuste DATABASE_URL/JWT_SECRET (e CLIENTE_STATUS_COLUMN, se existir)
 npm run build
-node -e "require('dotenv').config(); require('./dist/index.js').auth({body:JSON.stringify({cpf:'52998224725'})}).then(r=>console.log(r))"
+
+set -a && . ./.env && set +a
+node -e "require('./dist/index.js').auth({body:JSON.stringify({cpf:'52998224725'})}).then(r=>console.log(r))"
 ```
 
 ### 4.4 Na AWS
