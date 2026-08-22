@@ -216,7 +216,30 @@ set -a && . ./.env && set +a
 node -e "require('./dist/index.js').auth({body:JSON.stringify({cpf:'52998224725'})}).then(r=>console.log(r))"
 ```
 
-### 4.4 Na AWS
+### 4.4 Debug com breakpoints no VS Code
+
+Há duas configurações prontas em `.vscode/launch.json` (aba **Run and Debug**,
+`F5`) — em ambas os breakpoints são colocados direto nos arquivos `.ts`:
+
+| Configuração                         | Para que serve                                                                             |
+| ------------------------------------ | ------------------------------------------------------------------------------------------ |
+| `Debug: testes Jest (arquivo atual)` | depurar o teste aberto no editor (ou `Debug: todos os testes Jest`)                        |
+| `Debug: handler local (POST /auth)`  | executa `POST /auth` de verdade contra o Postgres do compose, parando nos seus breakpoints |
+
+O handler local precisa do banco em pé e do `.env` (o launch usa `envFile`):
+
+```bash
+docker compose up -d postgres
+cp .env.example .env    # DB_SSL=false, CLIENTE_STATUS_COLUMN=ativo
+```
+
+Mude o CPF em `args` do launch, ou rode sem debugger:
+`npm run invoke:local 11144477735`.
+
+> O `build:dev` (usado automaticamente antes do debug) gera sourcemap e não
+> minifica; o `build` de produção continua minificado e sem sourcemap.
+
+### 4.5 Na AWS
 
 ```bash
 aws lambda invoke --function-name oficina-auth-homolog:homolog \
