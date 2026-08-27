@@ -16,6 +16,8 @@ RUN npm ci
 COPY tsconfig.json ./
 COPY scripts ./scripts
 COPY src ./src
+ARG BUILD_DEV=0
+ENV BUILD_DEV=$BUILD_DEV
 RUN npm run build
 
 FROM public.ecr.aws/lambda/nodejs:20 AS runtime
