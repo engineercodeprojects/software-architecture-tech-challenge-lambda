@@ -102,6 +102,7 @@ src/
   index.ts       entrypoint único: despacha /auth ou authorizer
 infra/terraform/  function, IAM, secrets, alias por ambiente
 local/init.sql    banco de teste local com clientes de exemplo
+docs/             arquitetura (banco de dados, schema DBML, ER) e ADRs
 .github/          CI (lint/testes/build), CD (deploy) e Infra (terraform)
 ```
 
@@ -114,6 +115,15 @@ Decisões relevantes:
   o limite do RDS em escala.
 - Nome de tabela/coluna vêm do ambiente e são **validados como identificador SQL**
   antes de entrar na query; o CPF sempre vai como parâmetro (`$1`).
+
+### Documentação de arquitetura
+
+| Documento                                                                       | Conteúdo                                                                                                         |
+| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| [Banco de dados — justificativa](docs/arquitetura/banco-de-dados.md)            | PostgreSQL/RDS x DynamoDB, MySQL, Aurora, EC2; performance (índice funcional para o lookup de CPF); consistência |
+| [ADR-0001 — Escolha do banco de dados](docs/adr/0001-escolha-banco-de-dados.md) | Decisão formal e trade-off de conexões Lambda ↔ RDS (`max: 1` / RDS Proxy)                                       |
+| [Modelo relacional (DBML)](docs/arquitetura/schema.dbml)                        | Tabela `cliente` real (`local/init.sql`) + domínio da Fase 2, importável no dbdiagram.io                         |
+| [Diagrama ER (Mermaid)](docs/arquitetura/er-diagram.md)                         | Diagrama equivalente ao DBML com explicação de cardinalidade e regra de negócio de cada relacionamento           |
 
 ---
 
